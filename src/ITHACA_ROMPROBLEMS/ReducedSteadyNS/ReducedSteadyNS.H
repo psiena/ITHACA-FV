@@ -104,6 +104,7 @@ class reducedSteadyNS: public reducedProblem
 
         /// Online inlet velocity vector
         Eigen::MatrixXd vel_now;
+	Eigen::MatrixXd P_now;
 
         /// Reduced matrix for tangent forces
         Eigen::MatrixXd fTau;

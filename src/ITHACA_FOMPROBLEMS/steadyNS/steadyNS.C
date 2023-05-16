@@ -139,6 +139,31 @@ void steadyNS::solvesupremizer(word type)
              || type == "snapshots",
              "You must specify the variable type with either snapshots or modes");
     PtrList<volScalarField> P_sup;
+    //PtrList<volScalarField> Pfield_lift;
+
+    if (liftfieldP.size() != 0){
+        for (label k = 0; k < liftfieldP.size(); k++)
+        {
+                Pmodes_prova1.append(liftfieldP[k].clone());
+        }
+    }
+    if (NPmodes != 0){
+	cout << "Pmodes.size in supremizer" << Pmodes.size() << "\n"; 
+        for (label k = 0; k < Pmodes.size() - 1; k++)
+        {
+                Pmodes_prova1.append(Pmodes[k].clone());
+        }
+    }
+/*
+    for (int i; i < liftfieldP.size(); i++)
+    {
+	    Pfield_lift.append(liftfieldP[i].clone());
+    }
+    for (int i; i < Pfield.size()-1; i++)
+    {
+            Pfield_lift.append(Pfield[i].clone());
+    }*/
+
 
     if (type == "snapshots")
     {
@@ -146,8 +171,12 @@ void steadyNS::solvesupremizer(word type)
     }
     else
     {
-        P_sup = Pmodes;
+        P_sup = Pmodes_prova1;
     }
+    //cout << "Pfield_lift size in supremizer" << Pfield_lift.size() << "\n";
+    cout << "LiftfieldP size in supremizer" << liftfieldP.size() << "\n";
+    //cout << "Pmodes size" << Pmodes.size() << "\n";
+    //cout << "Pmodes[0]:" << Pmodes[0][0] << "\n";
 
     if (supex == 1)
     {
@@ -353,9 +382,12 @@ void steadyNS::liftSolve()
 void steadyNS::projectPPE(fileName folder, label NU, label NP, label NSUP)
 {
     NUmodes = NU;
+    //cout << "NUmodes:" << NUmodes << "\n";
     NPmodes = NP;
+    //cout << "NPmodes:" << NPmodes << "\n";
     NSUPmodes = 0;
     L_U_SUPmodes.resize(0);
+    Pmodes_prova.resize(0);
 
     if (liftfield.size() != 0)
     {
@@ -372,6 +404,21 @@ void steadyNS::projectPPE(fileName folder, label NU, label NP, label NSUP)
             L_U_SUPmodes.append(Umodes[k].clone());
         }
     }
+
+    //AGGIUNTO DA ME 
+    if (liftfieldP.size() != 0){
+        for (label k = 0; k < liftfieldP.size(); k++)
+        {
+                Pmodes_prova.append(liftfieldP[k].clone());
+        }
+    }
+    if (NPmodes != 0){
+        for (label k = 0; k < NPmodes; k++)
+        {
+                Pmodes_prova.append(Pmodes[k].clone());
+        }
+    }
+
 
     if (ITHACAutilities::check_folder("./ITHACAoutput/Matrices/"))
     {
@@ -544,9 +591,13 @@ void steadyNS::projectSUP(fileName folder, label NU, label NP, label NSUP)
 {
     NUmodes = NU;
     NPmodes = NP;
+    cout << "NPmodes:" << NPmodes << "\n";
+    cout << "NUmodes:" << NUmodes << "\n";
+    cout << "liftfieldP size in steady" << liftfieldP.size() << "\n";
     NSUPmodes = NSUP;
     L_U_SUPmodes.resize(0);
-
+    Pmodes_prova.resize(0); //aggiunto da me 
+    cout << "liftfield.size dalle matrici:" << liftfield.size();
     if (liftfield.size() != 0)
     {
         for (label k = 0; k < liftfield.size(); k++)
@@ -554,6 +605,22 @@ void steadyNS::projectSUP(fileName folder, label NU, label NP, label NSUP)
             L_U_SUPmodes.append(liftfield[k].clone());
         }
     }
+
+
+    //AGGIUNTO DA ME 
+    if (liftfieldP.size() != 0){
+    	for (label k = 0; k < liftfieldP.size(); k++)
+    	{
+        	Pmodes_prova.append(liftfieldP[k].clone());
+    	}
+    }
+    if (NPmodes != 0){
+    	for (label k = 0; k < NPmodes; k++)
+    	{
+        	Pmodes_prova.append(Pmodes[k].clone());
+    	}
+    }
+    ///////////////
 
     if (NUmodes != 0)
     {
@@ -646,6 +713,12 @@ void steadyNS::projectSUP(fileName folder, label NU, label NP, label NSUP)
         K_matrix = pressure_gradient_term(NUmodes, NPmodes, NSUPmodes);
         P_matrix = divergence_term(NUmodes, NPmodes, NSUPmodes);
         M_matrix = mass_term(NUmodes, NPmodes, NSUPmodes);
+        
+	cout << "B matrix" << B_matrix << "\n";
+	//cout << "C matrix" << C_matrix << "\n";
+	cout << "K matrix" << K_matrix << "\n";
+	cout << "P matrix" << P_matrix << "\n";
+	cout << "M matrix" << M_matrix << "\n";
 
         if (bcMethod == "penalty")
         {
@@ -862,6 +935,8 @@ Eigen::MatrixXd steadyNS::diffusive_term(label NUmodes, label NPmodes,
         label NSUPmodes)
 {
     label Bsize = NUmodes + NSUPmodes + liftfield.size();
+    cout << "liftfield size dentro diffusive_term:" << liftfield.size() << "\n";
+    cout << "Bsize:" << Bsize << "\n";
     Eigen::MatrixXd B_matrix;
     B_matrix.resize(Bsize, Bsize);
 
@@ -893,7 +968,10 @@ Eigen::MatrixXd steadyNS::pressure_gradient_term(label NUmodes, label NPmodes,
         label NSUPmodes)
 {
     label K1size = NUmodes + NSUPmodes + liftfield.size();
-    label K2size = NPmodes;
+    label K2size = NPmodes + liftfieldP.size();
+    cout << "K2size:" << K2size << "\n";
+    cout << "NPmodes dentro pressure_gradient_term:" << NPmodes << "\n";
+    //cout << "liftfieldP size:" << liftfieldP.size() << "\n";
     Eigen::MatrixXd K_matrix(K1size, K2size);
 
     // Project everything
@@ -902,10 +980,13 @@ Eigen::MatrixXd steadyNS::pressure_gradient_term(label NUmodes, label NPmodes,
         for (label j = 0; j < K2size; j++)
         {
             K_matrix(i, j) = fvc::domainIntegrate(L_U_SUPmodes[i] & fvc::grad(
-                    Pmodes[j])).value();
+                    Pmodes_prova[j])).value();
+	    //cout << "Pmodes[0]:" << Pmodes[0] << "\n";
         }
     }
-
+    //ITHACAstream::exportMatrix(Pmodes, "Pmodes", "matlab",
+    //                           "./ITHACAoutput/POD/Pmodes/");    
+    ITHACAstream::exportFields(Pmodes, "./ITHACAoutput/Matrices/", "Pmodes");
     if (Pstream::parRun())
     {
         reduce(K_matrix, sumOp<Eigen::MatrixXd>());
@@ -1042,7 +1123,7 @@ Eigen::MatrixXd steadyNS::mass_term(label NUmodes, label NPmodes,
 Eigen::MatrixXd steadyNS::divergence_term(label NUmodes, label NPmodes,
         label NSUPmodes)
 {
-    label P1size = NPmodes;
+    label P1size = NPmodes + liftfieldP.size();
     label P2size = NUmodes + NSUPmodes + liftfield.size();
     Eigen::MatrixXd P_matrix(P1size, P2size);
 
@@ -1051,7 +1132,7 @@ Eigen::MatrixXd steadyNS::divergence_term(label NUmodes, label NPmodes,
     {
         for (label j = 0; j < P2size; j++)
         {
-            P_matrix(i, j) = fvc::domainIntegrate(Pmodes[i] * fvc::div (
+            P_matrix(i, j) = fvc::domainIntegrate(Pmodes_prova[i] * fvc::div (
                     L_U_SUPmodes[j])).value();
         }
     }
@@ -1074,7 +1155,7 @@ Eigen::MatrixXd steadyNS::divergence_term(label NUmodes, label NPmodes,
 
 List <Eigen::MatrixXd> steadyNS::div_momentum(label NUmodes, label NPmodes)
 {
-    label G1size = NPmodes;
+    label G1size = NPmodes;// + 1;
     label G2size = NUmodes + NSUPmodes + liftfield.size();
     List <Eigen::MatrixXd> G_matrix;
     G_matrix.setSize(G1size);
@@ -1115,7 +1196,7 @@ List <Eigen::MatrixXd> steadyNS::div_momentum(label NUmodes, label NPmodes)
 
 Eigen::Tensor<double, 3> steadyNS::divMomentum(label NUmodes, label NPmodes)
 {
-    label g1Size = NPmodes;
+    label g1Size = NPmodes + liftfieldP.size();
     label g2Size = NUmodes + NSUPmodes + liftfield.size();
     Eigen::Tensor<double, 3> gTensor;
     gTensor.resize(g1Size, g2Size, g2Size);
@@ -1126,7 +1207,7 @@ Eigen::Tensor<double, 3> steadyNS::divMomentum(label NUmodes, label NPmodes)
         {
             for (label k = 0; k < g2Size; k++)
             {
-                gTensor(i, j, k) = fvc::domainIntegrate(fvc::grad(Pmodes[i]) & (fvc::div(
+                gTensor(i, j, k) = fvc::domainIntegrate(fvc::grad(Pmodes_prova[i]) & (fvc::div(
                         fvc::interpolate(L_U_SUPmodes[j]) & L_U_SUPmodes[j].mesh().Sf(),
                         L_U_SUPmodes[k]))).value();
             }
@@ -1151,7 +1232,7 @@ Eigen::Tensor<double, 3> steadyNS::divMomentum(label NUmodes, label NPmodes)
 
 Eigen::MatrixXd steadyNS::laplacian_pressure(label NPmodes)
 {
-    label Dsize = NPmodes;
+    label Dsize = NPmodes + liftfieldP.size();
     Eigen::MatrixXd D_matrix(Dsize, Dsize);
 
     // Project everything
@@ -1159,8 +1240,8 @@ Eigen::MatrixXd steadyNS::laplacian_pressure(label NPmodes)
     {
         for (label j = 0; j < Dsize; j++)
         {
-            D_matrix(i, j) = fvc::domainIntegrate(fvc::grad(Pmodes[i])&fvc::grad(
-                    Pmodes[j])).value();
+            D_matrix(i, j) = fvc::domainIntegrate(fvc::grad(Pmodes_prova[i])&fvc::grad(
+                    Pmodes_prova[j])).value();
         }
     }
 
@@ -1180,7 +1261,7 @@ Eigen::MatrixXd steadyNS::laplacian_pressure(label NPmodes)
 
 Eigen::MatrixXd steadyNS::pressure_BC1(label NUmodes, label NPmodes)
 {
-    label P_BC1size = NPmodes;
+    label P_BC1size = NPmodes;//+1;
     label P_BC2size = NUmodes + liftfield.size();
     Eigen::MatrixXd BC1_matrix(P_BC1size, P_BC2size);
     const fvMesh& mesh = L_U_SUPmodes[0].mesh();
@@ -1219,7 +1300,7 @@ Eigen::MatrixXd steadyNS::pressure_BC1(label NUmodes, label NPmodes)
 
 List <Eigen::MatrixXd> steadyNS::pressure_BC2(label NUmodes, label NPmodes)
 {
-    label P2_BC1size = NPmodes;
+    label P2_BC1size = NPmodes;//+1;
     label P2_BC2size = NUmodes + NSUPmodes + liftfield.size();
     List <Eigen::MatrixXd> BC2_matrix;
     const fvMesh& mesh = L_U_SUPmodes[0].mesh();
@@ -1261,8 +1342,8 @@ List <Eigen::MatrixXd> steadyNS::pressure_BC2(label NUmodes, label NPmodes)
 
 Eigen::Tensor<double, 3> steadyNS::pressureBC2(label NUmodes, label NPmodes)
 {
-    label pressureBC1Size = NPmodes;
-    label pressureBC2Size = NUmodes + NSUPmodes + liftfield.size();
+    label pressureBC1Size = NPmodes;//+1;
+    label pressureBC2Size = NUmodes + NSUPmodes +  liftfield.size();
     Eigen::Tensor<double, 3> bc2Tensor;
     const fvMesh& mesh = L_U_SUPmodes[0].mesh();
     bc2Tensor.resize(pressureBC1Size, pressureBC2Size, pressureBC2Size);
@@ -1306,7 +1387,7 @@ Eigen::Tensor<double, 3> steadyNS::pressureBC2(label NUmodes, label NPmodes)
 
 Eigen::MatrixXd steadyNS::pressure_BC3(label NUmodes, label NPmodes)
 {
-    label P3_BC1size = NPmodes;
+    label P3_BC1size = NPmodes + liftfieldP.size();
     label P3_BC2size = NUmodes + liftfield.size();
     Eigen::MatrixXd BC3_matrix(P3_BC1size, P3_BC2size);
     const fvMesh& mesh = L_U_SUPmodes[0].mesh();
@@ -1317,7 +1398,7 @@ Eigen::MatrixXd steadyNS::pressure_BC3(label NUmodes, label NPmodes)
         for (label j = 0; j < P3_BC2size; j++)
         {
             surfaceVectorField BC3 = fvc::interpolate(fvc::curl(L_U_SUPmodes[j])).ref();
-            surfaceVectorField BC4 = (n ^ fvc::interpolate(fvc::grad(Pmodes[i]))).ref();
+            surfaceVectorField BC4 = (n ^ fvc::interpolate(fvc::grad(Pmodes_prova[i]))).ref();
             surfaceScalarField BC5 = ((BC3 & BC4) * mesh.magSf()).ref();
             double s = 0;
 
@@ -1346,7 +1427,7 @@ Eigen::MatrixXd steadyNS::pressure_BC3(label NUmodes, label NPmodes)
 
 Eigen::MatrixXd steadyNS::pressure_BC4(label NUmodes, label NPmodes)
 {
-    label P4_BC1size = NPmodes;
+    label P4_BC1size = NPmodes + liftfieldP.size();
     label P4_BC2size = NUmodes + liftfield.size();
     Eigen::MatrixXd BC4_matrix(P4_BC1size, P4_BC2size);
     const fvMesh& mesh = L_U_SUPmodes[0].mesh();
@@ -1356,7 +1437,7 @@ Eigen::MatrixXd steadyNS::pressure_BC4(label NUmodes, label NPmodes)
     {
         for (label j = 0; j < P4_BC2size; j++)
         {
-            surfaceScalarField BC3 = fvc::interpolate(Pmodes[i]).ref();
+            surfaceScalarField BC3 = fvc::interpolate(Pmodes_prova[i]).ref();
             surfaceScalarField BC4 = (n & fvc::interpolate(L_U_SUPmodes[j])).ref();
             surfaceScalarField BC5 = ((BC3 * BC4) * mesh.magSf()).ref();
             double s = 0;
@@ -1466,7 +1547,7 @@ List<Eigen::MatrixXd> steadyNS::bcVelocityMat(label NUmodes,
 Eigen::MatrixXd steadyNS::diffusive_term_flux_method(label NUmodes,
         label NPmodes, label NSUPmodes)
 {
-    label BPsize1 = NPmodes;
+    label BPsize1 = NPmodes;// +1;
     label BPsize2 = NUmodes + NSUPmodes + liftfield.size();
     Eigen::MatrixXd BP_matrix(BPsize1, BPsize2);
     volVectorField L_U_SUPmodesaux(L_U_SUPmodes[0]);
@@ -1511,7 +1592,7 @@ List<Eigen::MatrixXd> steadyNS::boundary_vector_diffusion(label NUmodes,
         label BCind = inletIndex(i, 0);
         Vector<double> v(0, 0, 0);
         v[inletIndex(i, 1)] = 1;
-        volVectorField Upara(Uinl());
+        volVectorField Upara(Uinl);
         assignBC(Upara, BCind, v);
         // Determine boundary vector
         fvVectorMatrix UEqn
@@ -1557,7 +1638,7 @@ List<Eigen::MatrixXd> steadyNS::boundary_vector_convection(label NUmodes,
         label BCind = inletIndex(i, 0);
         Vector<double> v(0, 0, 0);
         v[inletIndex(i, 1)] = 1;
-        volVectorField Upara(Uinl());
+        volVectorField Upara(Uinl);
         assignBC(Upara, BCind, v);
         // Determine boundary vector
         fvVectorMatrix UEqn
@@ -1592,7 +1673,7 @@ Eigen::Tensor<double, 3> steadyNS::convective_term_flux_tens(label NUmodes,
         label NPmodes, label NSUPmodes)
 {
     label Csize1 = NUmodes + NSUPmodes + liftfield.size();
-    label Csize2 = NPmodes;
+    label Csize2 = NPmodes;//+1;
     Eigen::Tensor<double, 3> Cf_tensor;
     volVectorField L_U_SUPmodesaux(L_U_SUPmodes[0]);
     Cf_tensor.resize(Csize2, Csize1, Csize1);
@@ -1642,14 +1723,14 @@ List<Eigen::MatrixXd> steadyNS::pressure_gradient_term_linsys_div(label NPmodes)
     label BCsize = inletIndex.rows();
     List<Eigen::MatrixXd> LinSysDivDummy;
     LinSysDiv.resize(BCsize + 1);
-    volScalarField p(_p());
+    volScalarField p(_p);
 
     for (label i = 0; i < BCsize; i++)
     {
         label BCind = inletIndex(i, 0);
         Vector<double> v(0, 0, 0);
         v[inletIndex(i, 1)] = 1;
-        volVectorField Upara(Uinl());
+        volVectorField Upara(Uinl);
         assignBC(Upara, BCind, v);
         fvScalarMatrix pEqn
         (
@@ -1675,14 +1756,14 @@ List<Eigen::MatrixXd> steadyNS::pressure_gradient_term_linsys_conv(
     label BCsize = inletIndex.rows();
     List<Eigen::MatrixXd> LinSysConvDummy;
     LinSysConv.resize(BCsize + 1);
-    volScalarField p(_p());
+    volScalarField p(_p);
 
     for (label i = 0; i < BCsize; i++)
     {
         label BCind = inletIndex(i, 0);
         Vector<double> v(0, 0, 0);
         v[inletIndex(i, 1)] = 1;
-        volVectorField Upara(Uinl());
+        volVectorField Upara(Uinl);
         assignBC(Upara, BCind, v);
         volVectorField Caux(L_U_SUPmodes[0]);
         Caux = dt_dummy * (-fvc::div(fvc::flux(Upara), Upara));
@@ -1710,14 +1791,14 @@ List<Eigen::MatrixXd> steadyNS::pressure_gradient_term_linsys_diff(
     label BCsize = inletIndex.rows();
     List<Eigen::MatrixXd> LinSysDiffDummy;
     LinSysDiff.resize(BCsize + 1);
-    volScalarField p(_p());
+    volScalarField p(_p);
 
     for (label i = 0; i < BCsize; i++)
     {
         label BCind = inletIndex(i, 0);
         Vector<double> v(0, 0, 0);
         v[inletIndex(i, 1)] = 1;
-        volVectorField Upara(Uinl());
+        volVectorField Upara(Uinl);
         assignBC(Upara, BCind, v);
         volVectorField Daux(L_U_SUPmodes[0]);
         Daux = dt_dummy * fvc::laplacian(nu_dummy(), Upara);
@@ -1780,7 +1861,7 @@ Eigen::MatrixXd steadyNS::diffusive_term_consistent(label NUmodes,
     label DFsize = NUmodes + NSUPmodes + liftfield.size();
     Eigen::MatrixXd DF_matrix;
     DF_matrix.resize(DFsize, NUmodes);
-    surfaceScalarField phi_tmp("Phi_tmp", _phi());
+    surfaceScalarField phi_tmp("Phi_tmp", _phi);
 
     for (label i = 0; i < NUmodes; i++)
     {
@@ -1815,7 +1896,7 @@ Eigen::MatrixXd steadyNS::pressure_gradient_term_consistent(label NUmodes,
         label NSUPmodes)
 {
     label KF1size = NUmodes ;
-    label KF2size = NPmodes;
+    label KF2size = NPmodes;// +1;
     Eigen::MatrixXd KF_matrix(KF1size, KF2size);
 
     for (label i = 0; i < KF1size; i++)
@@ -1852,7 +1933,7 @@ Eigen::Tensor<double, 3> steadyNS::convective_term_consistent_tens(
     Eigen::Tensor<double, 3> Ci_tensor;
     volVectorField L_U_SUPmodesaux(L_U_SUPmodes[0]);
     Ci_tensor.resize(NUmodes, Csize1, Csize1);
-    surfaceScalarField phi_tmp("Phi_tmp", _phi());
+    surfaceScalarField phi_tmp("Phi_tmp", _phi);
 
     for (label i = 0; i < NUmodes; i++)
     {
@@ -1890,14 +1971,14 @@ List <Eigen::MatrixXd> steadyNS::boundary_vector_diffusion_consistent(
     label BCsize = inletIndex.rows();
     label SDsize = NUmodes + NSUPmodes;
     List <Eigen::MatrixXd> SD_matrix(BCsize);
-    surfaceScalarField phi_tmp("Phi_tmp", _phi());
+    surfaceScalarField phi_tmp("Phi_tmp", _phi);
 
     for (label i = 0; i < BCsize; i++)
     {
         label BCind = inletIndex(i, 0);
         Vector<double> v(0, 0, 0);
         v[inletIndex(i, 1)] = 1;
-        volVectorField Upara(Uinl());
+        volVectorField Upara(Uinl);
         assignBC(Upara, BCind, v);
         SD_matrix[i].resize(SDsize, 1);
 
@@ -1929,14 +2010,14 @@ List <Eigen::MatrixXd> steadyNS::boundary_vector_convection_consistent(
     label BCsize = inletIndex.rows();
     label SCsize = NUmodes + NSUPmodes;
     List <Eigen::MatrixXd> SC_matrix(BCsize);
-    surfaceScalarField phi_tmp("Phi_tmp", _phi());
+    surfaceScalarField phi_tmp("Phi_tmp", _phi);
 
     for (label i = 0; i < BCsize; i++)
     {
         label BCind = inletIndex(i, 0);
         Vector<double> v(0, 0, 0);
         v[inletIndex(i, 1)] = 1;
-        volVectorField Upara(Uinl());
+        volVectorField Upara(Uinl);
         assignBC(Upara, BCind, v);
         SC_matrix[i].resize(SCsize, 1);
 

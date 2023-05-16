@@ -135,6 +135,7 @@ class reductionProblem
         /// \\end{bmatrix}
         /// \\]
         Eigen::MatrixXi inletIndex;
+	Eigen::MatrixXi outletIndex;
 
         /// Matrix that contains informations about the inlet boundaries
         /// without specifing the direction
@@ -156,6 +157,7 @@ class reductionProblem
         /// \\end{bmatrix}
         /// \\]
         Eigen::MatrixXi inletPatch;
+	Eigen::MatrixXi outletPatch;
 
 #pragma GCC diagnostic pop
 
@@ -253,6 +255,9 @@ class reductionProblem
         template<typename T>
         void computeLift(T& Lfield, T& liftfield, T& omfield);
 
+	template<typename T>
+	void computeLiftP(T& Lfield, T& liftfieldP, T& omfield);
+
         //--------------------------------------------------------------------------
         /// Virtual function to compute the lifting function
         ///
@@ -263,6 +268,7 @@ class reductionProblem
         /// Virtual function to compute the lifting function for scalar field
         ///
         void liftSolve();
+	//void liftSolve_P();
         void liftSolveT();
         //--------------------------------------------------------------------------
         /// General projection operation
@@ -349,7 +355,8 @@ class reductionProblem
 Finite Volumes) is C++ library based on the finite volume solver
 [<b> OpenFOAM </b>](https://openfoam.org/). It consists of the implementation of several reduced order
 modeling techniques for parametrized problems. ITHACA-FV is developed and maintained by
-[<b> Dr. Giovanni Stabile </b>](https://www.giovannistabile.com/) at the [<b>University of Urbino Carlo Bo](https://www.uniurb.it/) and at [<b> SISSA mathLab </b>](https://mathlab.sissa.it/) in collaboration with [<b> Prof. Gianluigi Rozza's Group </b>](http://people.sissa.it/~grozza/). Check also the GitHub [webpage](https://github.com/ITHACA-FV/ITHACA-FV) for more info.
+[<b> Dr. Giovanni Stabile </b>](http://people.sissa.it/~gstabile/) under the supervision of [<b> Prof. Gianluigi Rozza </b>](http://people.sissa.it/~grozza/) at [<b> SISSA mathLab </b>](https://mathlab.sissa.it/) an applied math laboratory of the
+[<b> International School for advanced studies </b>](https://www.sissa.it/).
 
  *
  * \section structure ITHACA-FV directory structure
@@ -364,6 +371,7 @@ modeling techniques for parametrized problems. ITHACA-FV is developed and mainta
  *
 Most of the theoretical aspects behind ITHACA-FV are deeply explained in [<b> Stabile2017CAIM </b>](https://doi.org/10.1515/caim-2017-0011) and [<b> Stabile2017CAF </b>](https://doi.org/10.1016/j.compfluid.2018.01.035).
 For this reason, if you use this software, please consider citing the mentioned works, reported in the following bibtex entries:
+
 
 @Article{Stabile2017CAIM,
 Title                    = {{POD-Galerkin reduced order methods for CFD using Finite Volume Discretisation: vortex shedding around a circular cylinder}},
@@ -382,7 +390,7 @@ Journal                  = {Computers & Fluids},
 Year                     = {2018},
 Doi                      = {10.1016/j.compfluid.2018.01.035}}
 
-And cite the ITHACA-FV [website](https://ithaca-fv.github.io/ITHACA-FV).
+And cite the ITHACA-FV [website](https://mathlab.sissa.it/ithaca-fv).
 
  */
 

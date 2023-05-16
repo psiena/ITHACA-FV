@@ -1,0 +1,13 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+
+# Source tutorial clean functions
+. $WM_PROJECT_DIR/bin/tools/CleanFunctions
+
+#rm -rf constant/polyMesh
+rm -rf ITHACAoutput
+rm -f log.*
+#rm -rf 0.*
+rm -f 0/Ulift*
+rm -f 0/Plift*

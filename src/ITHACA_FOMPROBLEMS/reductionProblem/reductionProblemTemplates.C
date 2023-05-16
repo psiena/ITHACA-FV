@@ -58,18 +58,66 @@ void reductionProblem::computeLift(T& Lfield, T& liftfield, T& omfield)
 
         for (label j = 0; j < Lfield.size(); j++)
         {
+	    cout << "Lfield size in compute lift:" << Lfield.size() << "\n";
             if (k == 0)
             {
                 u_bc = gSum(Lfield[j].mesh().magSf().boundaryField()[p] *
                             Lfield[j].boundaryField()[p]).component(l) / area;
-                volVectorField C("U", Lfield[j] - liftfield[k]*u_bc / u_lf);
+		cout << "u_bc in compute lift:" << u_bc << "\n";
+                volVectorField C("U", Lfield[0]);
+		C = (Lfield[j] - liftfield[k]*u_bc) / u_lf; //cambiato da me per avere giuste BC
+		//volVectorField C("U", Lfield[j]);// - liftfield[k]*u_bc);// / u_lf);
+
                 omfield.append(C.clone());
+
+
             }
             else
             {
                 u_bc = gSum(omfield[j].mesh().magSf().boundaryField()[p] *
                             omfield[j].boundaryField()[p]).component(l) / area;
-                volVectorField C("U", omfield[j] - liftfield[k]*u_bc / u_lf);
+                volVectorField C("U", omfield[j] - liftfield[k]*u_bc);// / u_lf);
+                omfield.set(j, C.clone());
+            }
+        }
+    }
+}
+
+template<typename T>
+void reductionProblem::computeLiftP(T& Lfield, T& liftfieldP, T& omfield)
+{
+    scalar u_bc;
+    scalar u_lf;
+    scalar area;
+
+    for (label k = 0; k < outletIndex.rows(); k++)
+    {
+        label p = outletIndex(k, 0);
+        //label l = outletIndex(k, 1);
+        area = gSum(Lfield[0].mesh().magSf().boundaryField()[p]);
+        u_lf = gSum(liftfieldP[k].mesh().magSf().boundaryField()[p] *
+                    liftfieldP[k].boundaryField()[p]) / area;
+        M_Assert(std::abs(u_lf) > 1e-5,
+                 "The lift cannot be computed. Please, check your inletIndex definition");
+
+        for (label j = 0; j < Lfield.size(); j++)
+        {
+            if (k == 0)
+            {
+                u_bc = gSum(Lfield[j].mesh().magSf().boundaryField()[p] *
+                            Lfield[j].boundaryField()[p]) / area;
+		cout << "u_bc in compute liftP:" << u_bc << "\n";
+		volScalarField C("P", Lfield[0]);
+		C = (Lfield[j] - liftfieldP[k]*u_bc) / u_lf;
+                //volScalarField C("P", Lfield[j] - liftfieldP[k]*u_bc);// / u_lf);
+                omfield.append(C.clone());
+            }
+            else
+            {
+                u_bc = gSum(omfield[j].mesh().magSf().boundaryField()[p] *
+                            omfield[j].boundaryField()[p]) / area;
+		cout << "u_bc in compute liftP:" << u_bc << "\n";
+                volScalarField C("P", omfield[j] - liftfieldP[k]*u_bc);// / u_lf);
                 omfield.set(j, C.clone());
             }
         }
@@ -83,9 +131,9 @@ void reductionProblem::computeLiftT(T& Lfield, T& liftfield, T& omfield)
     scalar t_lf;
     scalar area;
 
-    for (label k = 0; k < inletIndexT.rows(); k++)
+    for (label k = 0; k < outletIndex.rows(); k++)//inletIndexT.rows(); k++)
     {
-        label p = inletIndexT(k, 0);
+        label p = outletIndex(k, 0);//inletIndexT(k, 0);
         area = gSum(Lfield[0].mesh().magSf().boundaryField()[p]);
         t_lf = gSum(liftfield[k].mesh().magSf().boundaryField()[p] *
                     liftfield[k].boundaryField()[p]) / area;
@@ -96,14 +144,14 @@ void reductionProblem::computeLiftT(T& Lfield, T& liftfield, T& omfield)
             {
                 t_bc = gSum(Lfield[j].mesh().magSf().boundaryField()[p] *
                             Lfield[j].boundaryField()[p]) / area;
-                volScalarField C(Lfield[0].name(), Lfield[j] - liftfield[k]*t_bc / t_lf);
+                volScalarField C("P", Lfield[j] - liftfield[k]*t_bc / t_lf);//Lfield[0].name(), Lfield[j] - liftfield[k]*t_bc / t_lf);
                 omfield.append(C.clone());
             }
             else
             {
                 t_bc = gSum(omfield[j].mesh().magSf().boundaryField()[p] *
                             omfield[j].boundaryField()[p]) / area;
-                volScalarField C(Lfield[0].name(), omfield[j] - liftfield[k]*t_bc / t_lf);
+                volScalarField C("P", omfield[j] - liftfield[k]*t_bc / t_lf);//Lfield[0].name(), omfield[j] - liftfield[k]*t_bc / t_lf);
                 omfield.set(j, C.clone());
             }
         }

@@ -71,7 +71,10 @@ class unsteadyNS: public steadyNS, public UnsteadyProblem
         // Dummy variables to transform pimplefoam into a class
         /// pimpleControl
         autoPtr<pimpleControl> _pimple;
-
+	
+	//PROVA
+	//PtrList<volScalarField> liftfieldP;
+	//PtrList<volScalarField> Pomfield;
         /// Turbulence model
         autoPtr<incompressible::turbulenceModel> turbulence;
 
@@ -86,12 +89,17 @@ class unsteadyNS: public steadyNS, public UnsteadyProblem
 
         // Counter used for the time-dependent boundary conditions
         label counter2 = 1;
+	//label counter3 = 1;
 
         /// Time-dependent Boundary Method
         word timedepbcMethod;
+	word timedepbcMethod_P;
+	word Add_liftfieldP;
 
         // Matrix containing the time-dependent boundary conditions for each time step
         Eigen::MatrixXd timeBCoff;
+	Eigen::MatrixXd timeBCoff_P;
+	//Eigen::MatrixXi outletPatch;
 
         // Time derivative numerical scheme order
         word timeDerivativeSchemeOrder;

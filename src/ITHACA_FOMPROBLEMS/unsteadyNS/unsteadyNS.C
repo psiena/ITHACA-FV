@@ -82,7 +82,17 @@ unsteadyNS::unsteadyNS(int argc, char* argv[])
              "The BC method must be set to lift or penalty in ITHACAdict");
     timedepbcMethod = ITHACAdict->lookupOrDefault<word>("timedepbcMethod", "no");
     M_Assert(timedepbcMethod == "yes" || timedepbcMethod == "no",
+    	    "The BC method can be set to yes or no");
+    //INSERITO DA ME 
+    timedepbcMethod_P = ITHACAdict->lookupOrDefault<word>("timedepbcMethod_P", "no");
+    M_Assert(timedepbcMethod_P == "yes" || timedepbcMethod_P == "no",
              "The BC method can be set to yes or no");
+
+    Add_liftfieldP = ITHACAdict->lookupOrDefault<word>("Add_liftfieldP", "no");
+    M_Assert(Add_liftfieldP == "yes" || Add_liftfieldP == "no",
+             "The BC method can be set to yes or no");
+
+    //
     timeDerivativeSchemeOrder =
         ITHACAdict->lookupOrDefault<word>("timeDerivativeSchemeOrder", "second");
     M_Assert(timeDerivativeSchemeOrder == "first"
@@ -125,10 +135,24 @@ void unsteadyNS::truthSolve(List<scalar> mu_now, fileName folder)
             {
                 inl[j] = timeBCoff(i * inl.size() + j, 0);
             }
+	    //cout << "timeBCoff:" << timeBCoff << "\n";
 
             assignBC(U, inletPatch(i, 0), inl);
         }
     }
+
+    //INSERITO DA ME
+    if (timedepbcMethod_P == "yes")
+    {
+	    for(label i = 0; i < outletPatch.rows(); i++)
+	    { 
+		    double out_P = 0;
+		    out_P = timeBCoff_P(i, 0);
+		    assignBC(p, outletPatch(i, 0), out_P);
+	    }
+    }
+    
+    //
 
     // Export and store the initial conditions for velocity and pressure
     ITHACAstream::exportSolution(U, name(counter), folder);
@@ -160,14 +184,31 @@ void unsteadyNS::truthSolve(List<scalar> mu_now, fileName folder)
                 for (label j = 0; j < inl.size(); j++)
                 {
                     inl[j] = timeBCoff(i * inl.size() + j, counter2);
+		    //cout << "BC:" << inl[j] << "\n";
                 }
 
                 assignBC(U, inletPatch(i, 0), inl);
             }
 
-            counter2 ++;
-        }
+            //counter2 ++;
+        //}
 
+		//INSERITO DA ME 
+	    if (timedepbcMethod_P == "yes")
+	    {
+		    for (label i = 0; i < outletPatch.rows(); i++)
+		    {
+			    double out_P = 0;
+			    out_P = timeBCoff_P(i, counter2);
+			    assignBC(p, outletPatch(i, 0), out_P);
+		    }
+
+		    //counter2++;
+	    }
+	    counter2 ++;
+        }
+	//
+	
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
@@ -222,3 +263,5 @@ void unsteadyNS::truthSolve(List<scalar> mu_now, fileName folder)
                                    folder);
     }
 }
+
+

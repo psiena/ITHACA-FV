@@ -55,6 +55,7 @@ SourceFiles
 #include "IPstream.H"
 #include "OPstream.H"
 #include "Modes.H"
+//#include "unsteadyNS.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -108,12 +109,17 @@ class steadyNS: public reductionProblem
 
         /// List of pointers used to form the list of lifting functions
         PtrList<volVectorField> liftfield;
+	PtrList<volScalarField> liftfieldP;
+	//Eigen::MatrixXi outletPatch;
 
         /// List of pointers used to form the homogeneous velocity snapshots
         PtrList<volVectorField> Uomfield;
+	PtrList<volScalarField> Pomfield;
 
         /// List of pointers containing the total number of lift, supremizer and velocity modes
         volVectorModes L_U_SUPmodes;
+	volScalarModes Pmodes_prova;
+	PtrList<volScalarField> Pmodes_prova1;
 
         /// List of pointers containing the total number of flux modes
         surfaceScalarModes L_PHImodes;
@@ -338,6 +344,8 @@ class steadyNS: public reductionProblem
 
         /// Perform a lift solve
         void liftSolve();
+	//void liftSolveP();
+	Eigen::MatrixXd BCs_P;
 
         // Wrapped Proj. Methods;
 

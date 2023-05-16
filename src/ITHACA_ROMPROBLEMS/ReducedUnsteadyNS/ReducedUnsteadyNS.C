@@ -33,7 +33,9 @@ License
 
 
 #include "ReducedUnsteadyNS.H"
-
+#include "unsteadyNS.H"
+//#include <list>
+//#include <iostream>
 
 // * * * * * * * * * * * * * * * Constructors * * * * * * * * * * * * * * * * //
 
@@ -47,9 +49,10 @@ reducedUnsteadyNS::reducedUnsteadyNS(unsteadyNS& FOMproblem)
     problem(&FOMproblem)
 {
     N_BC = problem->inletIndex.rows();
+    N_BC_P = problem->outletIndex.rows();
     Nphi_u = problem->B_matrix.rows();
-    Nphi_p = problem->K_matrix.cols();
-
+    Nphi_p = problem->K_matrix.cols(); 
+    cout << "assegnazione Nphi_p:" << Nphi_p << "\n";
     // Create locally the velocity modes
     for (int k = 0; k < problem->liftfield.size(); k++)
     {
@@ -67,15 +70,29 @@ reducedUnsteadyNS::reducedUnsteadyNS(unsteadyNS& FOMproblem)
     }
 
     // Create locally the pressure modes
+    //INSERITO DA ME
+    Add_liftfieldP = problem->para->ITHACAdict->lookupOrDefault<word>("Add_liftfieldP", "no");
+    /*M_Assert(Add_liftfieldP == "yes" || Add_liftfieldP == "no",
+             "The BC method can be set to yes or no");*/
+    std::cout << "Add_liftfieldP" << Add_liftfieldP <<"\n";
+    if (Add_liftfieldP == "yes"){
+    	for (int k = 0; k < problem->liftfieldP.size(); k++)
+    	{
+		Pmodes.append((problem->liftfieldP[k]).clone());
+		//std::cout << "liftfieldP aggiunta in Pmodes " <<"\n";
+    	}
+    } 
     for (int k = 0; k < problem->NPmodes; k++)
     {
         Pmodes.append((problem->Pmodes[k]).clone());
     }
-
+    cout << "Nphi_p:" << Nphi_p << "\n";
+    cout << "Nphi_u:" << Nphi_u << "\n";
     newton_object_sup = newton_unsteadyNS_sup(Nphi_u + Nphi_p, Nphi_u + Nphi_p,
                         FOMproblem);
     newton_object_PPE = newton_unsteadyNS_PPE(Nphi_u + Nphi_p, Nphi_u + Nphi_p,
                         FOMproblem);
+    cout << "dopo la def di neton object sup e PPE" << "\n";
 }
 
 // * * * * * * * * * * * * * Operators supremizer  * * * * * * * * * * * * * //
@@ -89,8 +106,11 @@ int newton_unsteadyNS_sup::operator()(const Eigen::VectorXd& x,
     Eigen::VectorXd b_tmp(Nphi_p);
     a_tmp = x.head(Nphi_u);
     b_tmp = x.tail(Nphi_p);
-
+    
+    //cout << "newton_unsteadyNS_sup Nphi_p:" << Nphi_p << "\n";
+    //cout << "newton_unsteadyNS_sup Nphi_u:" << Nphi_u << "\n";
     // Choose the order of the numerical difference scheme for approximating the time derivative
+    //a_dot = (x.head(Nphi_u) - y_old.head(Nphi_u)) / dt;
     if (problem->timeDerivativeSchemeOrder == "first")
     {
         a_dot = (x.head(Nphi_u) - y_old.head(Nphi_u)) / dt;
@@ -146,6 +166,8 @@ int newton_unsteadyNS_sup::operator()(const Eigen::VectorXd& x,
         fvec(k) = M3(j);
     }
 
+    //cout << "fvec:" << fvec << "\n";
+
     if (problem->bcMethod == "lift")
     {
         for (int j = 0; j < N_BC; j++)
@@ -153,6 +175,19 @@ int newton_unsteadyNS_sup::operator()(const Eigen::VectorXd& x,
             fvec(j) = x(j) - BC(j);
         }
     }
+    if (Add_liftfieldP == "yes"){
+        for (int j = 0; j < N_BC_P; j++)
+        {
+            fvec(j + Nphi_u) = x(j + Nphi_u) - BC_P(j);
+       	}
+    }
+//	cout << "fvec:" << fvec << "\n";
+
+
+    
+
+    //ITHACAstream::exportMatrix(fvec, "fvec", "python",
+      //                         "./ITHACAoutput/fvec");
 
     return 0;
 }
@@ -177,7 +212,7 @@ int newton_unsteadyNS_PPE::operator()(const Eigen::VectorXd& x,
     Eigen::VectorXd b_tmp(Nphi_p);
     a_tmp = x.head(Nphi_u);
     b_tmp = x.tail(Nphi_p);
-
+    //cout << "QUI FATTO3" << "\n";
     // Choose the order of the numerical difference scheme for approximating the time derivative
     if (problem->timeDerivativeSchemeOrder == "first")
     {
@@ -252,7 +287,18 @@ int newton_unsteadyNS_PPE::operator()(const Eigen::VectorXd& x,
         {
             fvec(j) = x(j) - BC(j);
         }
+	/*for (int j = 0; j< N_BC_P; j++)
+	{
+	    fvec(Nphi_u + j) = x(Nphi_u + j) - BC_P(j);
+	}*/
     }
+    if (Add_liftfieldP == "yes"){
+        for (int j = 0; j < N_BC_P; j++)
+        {
+            fvec(j + Nphi_u) = x(j + Nphi_u) - BC_P(j);
+        }
+    }
+
 
     return 0;
 }
@@ -269,7 +315,7 @@ int newton_unsteadyNS_PPE::df(const Eigen::VectorXd& x,
 
 // * * * * * * * * * * * * * Solve Functions supremizer * * * * * * * * * * * //
 
-void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel,
+void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel, Eigen::MatrixXd pressure,
                                         int startSnap)
 {
     M_Assert(exportEvery >= dt,
@@ -282,11 +328,16 @@ void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel,
              "The variable exportEvery must be an integer multiple of the time step dt.");
     M_Assert(ITHACAutilities::isInteger(exportEvery / storeEvery) == true,
              "The variable exportEvery must be an integer multiple of the variable storeEvery.");
+
     int numberOfStores = round(storeEvery / dt);
 
     if (problem->bcMethod == "lift")
     {
         vel_now = setOnlineVelocity(vel);
+	if (Add_liftfieldP == "yes"){
+		P_now = setOnlinePressure(pressure);
+		cout << "P_now set" << "\n";
+	}
     }
     else if (problem->bcMethod == "penalty")
     {
@@ -296,10 +347,16 @@ void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel,
     // Create and resize the solution vector
     y.resize(Nphi_u + Nphi_p, 1);
     y.setZero();
+    cout << "Nphi_u:" << Nphi_u << "\n";
+    cout << "reducedUnsteadyNS Nphi_p:" << Nphi_p << "\n";
+    cout << "y size:" << y.size() << "\n";
     y.head(Nphi_u) = ITHACAutilities::getCoeffs(problem->Ufield[startSnap],
                      Umodes);
+    cout << "y.head(Nphi_u)" << y << "\n";
+    cout << "Pmodes size" << Pmodes.size() << "\n";
     y.tail(Nphi_p) = ITHACAutilities::getCoeffs(problem->Pfield[startSnap],
                      Pmodes);
+    cout << "y.tail(Nphi_p)" << y << "\n";
     int nextStore = 0;
     int counter2 = 0;
 
@@ -310,20 +367,37 @@ void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel,
         {
             y(j) = vel_now(j, 0);
         }
+	if (Add_liftfieldP == "yes"){
+        	for (int j = 0; j < N_BC_P; j++)
+        	{
+            		y(j + Nphi_u) = P_now(j, 0);
+        	}
+	}
     }
-
+    //cout << "FINO A QUI SI" << "\n";
     // Set some properties of the newton object
     newton_object_sup.nu = nu;
     newton_object_sup.y_old = y;
+    //cout << "Nphi_p prima"<< Nphi_p << "\n";
     newton_object_sup.yOldOld = newton_object_sup.y_old;
+    //cout << "Nphi_p dopo" << Nphi_p << "\n";
     newton_object_sup.dt = dt;
     newton_object_sup.BC.resize(N_BC);
+    newton_object_sup.BC_P.resize(N_BC_P);
     newton_object_sup.tauU = tauU;
 
     for (int j = 0; j < N_BC; j++)
     {
         newton_object_sup.BC(j) = vel_now(j, 0);
     }
+    cout << "Add_liftfieldP" << Add_liftfieldP << "\n";
+    if (Add_liftfieldP == "yes"){
+    	for (int j = 0; j < N_BC_P; j++)
+    	{
+        	newton_object_sup.BC_P(j) = P_now(j, 0);
+    	}
+    }
+
 
     // Set number of online solutions
     int Ntsteps = static_cast<int>((finalTime - tstart) / dt);
@@ -347,7 +421,7 @@ void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel,
     Color::Modifier red(Color::FG_RED);
     Color::Modifier green(Color::FG_GREEN);
     Color::Modifier def(Color::FG_DEFAULT);
-
+    
     while (time < finalTime)
     {
         time = time + dt;
@@ -359,11 +433,21 @@ void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel,
             {
                 newton_object_sup.BC(j) = vel_now(j, counter);
             }
+	    if (Add_liftfieldP == "yes"){
+            	for (int j = 0; j < N_BC_P; j++)
+            	{
+                	newton_object_sup.BC_P(j) = P_now(j, counter);
+            	}
+	    }
+
         }
 
         Eigen::VectorXd res(y);
         res.setZero();
+	//cout << "CIAONE" << "\n";
         hnls.solve(y);
+	//cout << "CIAONE" << "\n";
+	cout << "y:" << y << "\n";
 
         if (problem->bcMethod == "lift")
         {
@@ -378,6 +462,21 @@ void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel,
                     y(j) = vel_now(j, counter);
                 }
             }
+	    if (Add_liftfieldP == "yes"){
+            	for (int j = 0; j < N_BC_P; j++)
+            	{
+                	if (problem->timedepbcMethod == "no" )
+                	{
+                    		y(j + Nphi_u) = P_now(j, 0);
+                	}
+                	else if (problem->timedepbcMethod == "yes" )
+                	{
+                    		//y(j) = vel_now(j, counter);
+		   		y(j + Nphi_u) = P_now(j, counter);
+                	}
+            	}
+	    }
+
         }
 
         newton_object_sup.operator()(y, res);
@@ -428,7 +527,7 @@ void reducedUnsteadyNS::solveOnline_sup(Eigen::MatrixXd vel,
 
 // * * * * * * * * * * * * * * * Solve Functions PPE * * * * * * * * * * * * * //
 
-void reducedUnsteadyNS::solveOnline_PPE(Eigen::MatrixXd vel,
+void reducedUnsteadyNS::solveOnline_PPE(Eigen::MatrixXd vel, Eigen::MatrixXd pressure,
                                         int startSnap)
 {
     M_Assert(exportEvery >= dt,
@@ -439,30 +538,41 @@ void reducedUnsteadyNS::solveOnline_PPE(Eigen::MatrixXd vel,
              "The variable storeEvery must be an integer multiple of the time step dt.");
     M_Assert(ITHACAutilities::isInteger(exportEvery / dt) == true,
              "The variable exportEvery must be an integer multiple of the time step dt.");
-    M_Assert(ITHACAutilities::isInteger(exportEvery / storeEvery) == true,
-             "The variable exportEvery must be an integer multiple of the variable storeEvery.");
+
     int numberOfStores = round(storeEvery / dt);
 
     if (problem->bcMethod == "lift")
     {
-        vel_now = setOnlineVelocity(vel);
+	//cout << "vel size:" << vel.size() << "\n";
+	vel_now = setOnlineVelocity(vel);
+	//cout << "vel_now size:" << vel_now.size() << "\n";
+	//P_now = setOnlinePressure(pressure);
+        if (Add_liftfieldP == "yes"){
+                P_now = setOnlinePressure(pressure);
+                //cout << "P_now set" << "\n";
+        }
+
     }
     else if (problem->bcMethod == "penalty")
     {
         vel_now = vel;
     }
-
+    
     // Create and resize the solution vector
     y.resize(Nphi_u + Nphi_p, 1);
     y.setZero();
+
     // Set Initial Conditions
     y.head(Nphi_u) = ITHACAutilities::getCoeffs(problem->Ufield[startSnap],
                      Umodes);
+    cout << "Nphi_u:" << Nphi_u << "\n";
+    cout << "Nphi_p:" << Nphi_p << "\n";
     y.tail(Nphi_p) = ITHACAutilities::getCoeffs(problem->Pfield[startSnap],
-                     Pmodes);
+                     Pmodes); 
+    //cout << "Pmodes:" << Pmodes << "\n"; 
     int nextStore = 0;
     int counter2 = 0;
-
+    cout << "prima di Change condition for the lift fatto" << "\n";
     // Change initial condition for the lifting function
     if (problem->bcMethod == "lift")
     {
@@ -470,19 +580,43 @@ void reducedUnsteadyNS::solveOnline_PPE(Eigen::MatrixXd vel,
         {
             y(j) = vel_now(j, 0);
         }
-    }
+	/*for (int j = 0; j < N_BC_P; j++)
+	{   
+	    //y(Nphi_u + j) = P_now(j, 0);
+	}*/
 
+        if (Add_liftfieldP == "yes"){
+                for (int j = 0; j < N_BC_P; j++)
+                {
+                        y(j + Nphi_u) = P_now(j, 0);
+                }
+        }
+
+    }
     // Set some properties of the newton object
     newton_object_PPE.nu = nu;
     newton_object_PPE.y_old = y;
     newton_object_PPE.yOldOld = newton_object_PPE.y_old;
     newton_object_PPE.dt = dt;
     newton_object_PPE.BC.resize(N_BC);
+    newton_object_PPE.BC_P.resize(N_BC_P);
     newton_object_PPE.tauU = tauU;
 
     for (int j = 0; j < N_BC; j++)
     {
         newton_object_PPE.BC(j) = vel_now(j, 0);
+    }
+ 
+    /*for (int j = 0; j< N_BC_P; j++)
+    {
+	//newton_object_PPE.BC_P(j) = P_now(j, 0);
+    }*/
+
+    if (Add_liftfieldP == "yes"){
+        for (int j = 0; j < N_BC_P; j++)
+        {
+                newton_object_PPE.BC_P(j) = P_now(j, 0);
+        }
     }
 
     // Set number of online solutions
@@ -520,12 +654,24 @@ void reducedUnsteadyNS::solveOnline_PPE(Eigen::MatrixXd vel,
             {
                 newton_object_PPE.BC(j) = vel_now(j, counter);
             }
+	    /*for (int j = 0; j < N_BC_P; j++)
+	    {
+		//newton_object_PPE.BC_P(j) = P_now(j, counter);
+	    }*/
+            if (Add_liftfieldP == "yes"){
+                for (int j = 0; j < N_BC_P; j++)
+                {
+                        newton_object_PPE.BC_P(j) = P_now(j, counter);
+                }
+            }
         }
-
+	cout << "prima di res(y) fatto" << "\n";
         Eigen::VectorXd res(y);
         res.setZero();
+	cout << "prima di solve(y) fatto" << "\n";
+	cout << "y size:" << y.size() <<"\n";
         hnls.solve(y);
-
+	cout << "dopo di solve(y) fatto" << "\n";
         if (problem->bcMethod == "lift")
         {
             for (int j = 0; j < N_BC; j++)
@@ -537,6 +683,31 @@ void reducedUnsteadyNS::solveOnline_PPE(Eigen::MatrixXd vel,
                 else if (problem->timedepbcMethod == "yes" )
                 {
                     y(j) = vel_now(j, counter);
+                }
+            }
+	    /*for (int j = 0; j < N_BC_P; j++)
+	    {
+		if (problem->timedepbcMethod == "no")
+		{
+		    //y(j) = P_now(j, 0);
+		}
+		else if (problem->timedepbcMethod == "yes" )
+		{ 
+	            //y(Nphi_u + j) = P_now(j, counter);
+		}
+	    }*/
+            if (Add_liftfieldP == "yes"){
+                for (int j = 0; j < N_BC_P; j++)
+                {
+                        if (problem->timedepbcMethod == "no" )
+                        {
+                                y(j + Nphi_u) = P_now(j, 0);
+                        }
+                        else if (problem->timedepbcMethod == "yes" )
+                        {
+                                //y(j) = vel_now(j, counter);
+                                y(j + Nphi_u) = P_now(j, counter);
+                        }
                 }
             }
         }
@@ -585,6 +756,7 @@ void reducedUnsteadyNS::solveOnline_PPE(Eigen::MatrixXd vel,
                                "./ITHACAoutput/red_coeff");
     ITHACAstream::exportMatrix(online_solution, "red_coeff", "matlab",
                                "./ITHACAoutput/red_coeff");
+    //cnpy::save(online_solution, "./ITHACAoutput/POD/red_coeff.npy");
 }
 
 Eigen::MatrixXd reducedUnsteadyNS::penalty_sup(Eigen::MatrixXd& vel_now,
@@ -849,6 +1021,9 @@ void reducedUnsteadyNS::reconstruct(bool exportFields, fileName folder)
     tValues.resize(0);
     int exportEveryIndex = round(exportEvery / storeEvery);
 
+    std::cout << "Nphi_u in reconstruct: " << Nphi_u << std::endl;
+    std::cout << "Nphi_p in recostruct: " << Nphi_p << std::endl;
+
     for (int i = 0; i < online_solution.size(); i++)
     {
         if (counter == nextwrite)
@@ -856,7 +1031,9 @@ void reducedUnsteadyNS::reconstruct(bool exportFields, fileName folder)
             Eigen::MatrixXd currentUCoeff;
             Eigen::MatrixXd currentPCoeff;
             currentUCoeff = online_solution[i].block(1, 0, Nphi_u, 1);
+	    //std::cout << "Nphi_u in reconstruct: " << Nphi_u << std::endl;
             currentPCoeff = online_solution[i].bottomRows(Nphi_p);
+	    //std::cout << "Nphi_p in recostruct: " << Nphi_p << std::endl;
             CoeffU.append(currentUCoeff);
             CoeffP.append(currentPCoeff);
             nextwrite += exportEveryIndex;
@@ -868,9 +1045,94 @@ void reducedUnsteadyNS::reconstruct(bool exportFields, fileName folder)
     }
 
     volVectorField uRec("uRec", Umodes[0] * 0);
-    volScalarField pRec("pRec", problem->Pmodes[0] * 0);
-    uRecFields = problem->L_U_SUPmodes.reconstruct(uRec, CoeffU, "uRec");
-    pRecFields = problem->Pmodes.reconstruct(pRec, CoeffP, "pRec");
+    volScalarField pRec("pRec", Pmodes[0] * 0);
+
+////////////////////////////////////////////////////////////////
+    int counter2 = 1;
+   
+    cout << "Pmodes size dentro reconstruc: " << Pmodes.size() << "\n";
+    cout << "Umodes size dentro reconstruc: " << Umodes.size() << "\n";
+    cout << "LUSUPmodes size dentro reconstruc: " << problem->L_U_SUPmodes.size() << "\n";
+    
+    volVectorField U_rec("U_rec", problem->L_U_SUPmodes[0] * 0);
+    volScalarField P_rec("P_rec", Pmodes[0] * 0);
+
+    for (label i = 0; i < online_solution.size(); i++)
+    {
+        if (counter == nextwrite)
+        {
+    		volScalarField P_rec("P_rec", Pmodes[0] * 0);
+		volScalarField P_modes0("P_modes0", Pmodes[0] * 0);
+		volScalarField P_modes1("P_modes1", Pmodes[0] * 0);
+		volScalarField P_modes2("P_modes2", Pmodes[0] * 0);
+            	//Info << "PROVAAAA    " << P_rec.size();
+		//cout << "P_rec.size: " << P_rec.size();
+            	for (label j = 0; j < Nphi_p; j++)
+            	{
+                	label k = j + Nphi_u;
+                	//Info<< "PROVAAAAA    "<<Pmodes.size();
+                	P_rec += Pmodes[j]*online_solution[i](k + 1, 0);
+            	}
+         	ITHACAstream::exportSolution(P_rec, name(counter2), folder);
+
+		/*P_modes0 = Pmodes[0];
+                P_modes1 = Pmodes[1];
+                P_modes2 = Pmodes[2];                
+                ITHACAstream::exportSolution(P_modes0,  name(counter2), folder);
+                ITHACAstream::exportSolution(P_modes1,  name(counter2), folder);
+                ITHACAstream::exportSolution(P_modes2,  name(counter2), folder);*/
+
+
+
+		//ITHACAstream::exportFields(P_rec, folder,"P_rec");
+		//////////////////////////////////////////////////
+		volVectorField U_rec("U_rec", problem->L_U_SUPmodes[0] * 0);
+		volVectorField U_modes0("U_modes0", problem->L_U_SUPmodes[0] * 0);
+    		volVectorField U_modes1("U_modes1", problem->L_U_SUPmodes[0] * 0);
+		volVectorField U_modes2("U_modes2", problem->L_U_SUPmodes[0] * 0);
+	        volVectorField U_sup1("U_sup1", problem->L_U_SUPmodes[0] * 0);
+	        volVectorField U_sup2("U_sup2", problem->L_U_SUPmodes[0] * 0);	
+		for (label j = 0; j < Nphi_u; j++)
+            	{
+                	//U_rec += Umodes[j] * online_solution[i](j + 1, 0);
+                	//label k = j;
+                 	//label k = j + Nphi_u;// + Nphi_p;
+                 	//Uevolve_rec += (1-5e-3)* Uevolvemodes[j] * online_solution[i](j + 1, 0) + 5e-3*Umodes[j] * online_solution[i](k + 1, 0);
+                 	U_rec += problem->L_U_SUPmodes[j] * online_solution[i](j + 1, 0);
+			//cout << "time:" << i << "\n";
+			//cout << "red_coeff recostruct:" << online_solution[i](j + 1, 0) << "\n";
+                 	//U_modes += Umodes[j];
+            	}
+		/*U_modes0 = problem->L_U_SUPmodes[0];
+		U_modes1 = problem->L_U_SUPmodes[1];
+		U_modes2 = problem->L_U_SUPmodes[2];
+		U_sup1 = problem->L_U_SUPmodes[3];
+		U_sup2 = problem->L_U_SUPmodes[4];*/
+    		ITHACAstream::exportSolution(U_rec,  name(counter2), folder);
+		/*ITHACAstream::exportSolution(U_modes0,  name(counter2), folder);
+		ITHACAstream::exportSolution(U_modes1,  name(counter2), folder);
+		ITHACAstream::exportSolution(U_modes2,  name(counter2), folder);
+		ITHACAstream::exportSolution(U_sup1,  name(counter2), folder);
+		ITHACAstream::exportSolution(U_sup2,  name(counter2), folder);*/
+
+	
+		pRecFields.append((P_rec).clone());
+		uRecFields.append((U_rec).clone());
+	}
+	counter2++;
+    }
+ 
+    /*for (label i = 0; i < problem->Ufield.size(); i++)
+    {
+    	Eigen::VectorXd Uproj1 = Foam2Eigen::projectField(problem->Ufield[i], problem->L_U_SUPmodes, Nphi_u);
+	cout << "Uproj1" << Uproj1 << "\n";	
+    }*/
+    ///////////////////////////////////////////////////////////////
+
+    //uRecFields = problem->L_U_SUPmodes.reconstruct(uRec, CoeffU, "uRec");
+    //pRecFields = problem->Pmodes.reconstruct(pRec, CoeffP, "pRec");
+   
+    //std::cout << "Pmodes[0][5]: " << Pmodes[0][5] << std::endl;
 
     if (exportFields)
     {
@@ -878,6 +1140,8 @@ void reducedUnsteadyNS::reconstruct(bool exportFields, fileName folder)
                                    "uRec");
         ITHACAstream::exportFields(pRecFields, folder,
                                    "pRec");
+	//ITHACAstream::exportFields(P_rec, folder,
+        //                           "P_Rec");
     }
 }
 
@@ -895,7 +1159,7 @@ Eigen::MatrixXd reducedUnsteadyNS::setOnlineVelocity(Eigen::MatrixXd vel)
         scalar area = gSum(problem->liftfield[0].mesh().magSf().boundaryField()[p]);
         scalar u_lf = gSum(problem->liftfield[k].mesh().magSf().boundaryField()[p] *
                            problem->liftfield[k].boundaryField()[p]).component(l) / area;
-
+	cout << "u_lf velocity:" << u_lf << "\n";
         for (int i = 0; i < vel.cols(); i++)
         {
             vel_scal(k, i) = vel(k, i) / u_lf;
@@ -903,5 +1167,28 @@ Eigen::MatrixXd reducedUnsteadyNS::setOnlineVelocity(Eigen::MatrixXd vel)
     }
 
     return vel_scal;
+}
+
+Eigen::MatrixXd reducedUnsteadyNS::setOnlinePressure(Eigen::MatrixXd pressure)
+{
+    assert(problem->outletIndex.rows() == pressure.rows()
+            && "Imposed boundary conditions dimensions do not match given values matrix dimensions");
+    Eigen::MatrixXd pressure_scal;
+    pressure_scal.resize(pressure.rows(), pressure.cols());
+    for (int k = 0; k < problem->outletIndex.rows(); k++)
+    {
+            int p = problem->outletIndex(k, 0);
+            //int l = problem->outletIndex(k, 1);
+            scalar area = gSum(problem->liftfieldP[0].mesh().magSf().boundaryField()[p]);
+            scalar u_lf = gSum(problem->liftfieldP[k].mesh().magSf().boundaryField()[p] *
+                                problem->liftfieldP[k].boundaryField()[p]) / area;
+	    cout << "u_lf pressure:" << u_lf << "\n";
+            for (int i = 0; i < pressure.cols(); i++)
+            {
+                pressure_scal(k, i) = pressure(k, i) / u_lf;
+            }
+    }
+
+   return pressure_scal;
 }
 //************************************************************************* //
