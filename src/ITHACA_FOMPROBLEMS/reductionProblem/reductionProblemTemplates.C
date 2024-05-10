@@ -48,29 +48,50 @@ void reductionProblem::computeLift(T& Lfield, T& liftfield, T& omfield)
 
     for (label k = 0; k < inletIndex.rows(); k++)
     {
-        label p = inletIndex(k, 0);
+	label p = inletIndex(k, 0);
         label l = inletIndex(k, 1);
         area = gSum(Lfield[0].mesh().magSf().boundaryField()[p]);
-        u_lf = gSum(liftfield[k].mesh().magSf().boundaryField()[p] *
+	u_lf = gSum(liftfield[k].mesh().magSf().boundaryField()[p] *
                     liftfield[k].boundaryField()[p]).component(l) / area;
-        M_Assert(std::abs(u_lf) > 1e-5,
+	std::cout << "1/u_lf:" << 1/u_lf << "\n";
+        	
+	M_Assert(std::abs(u_lf) > 1e-5,
                  "The lift cannot be computed. Please, check your inletIndex definition");
 
-        for (label j = 0; j < Lfield.size(); j++)
+        cout << "SIAMO IN computeLift" << "\n";
+ 	cout << "Lfield size: " << Lfield.size() << "\n";	
+	for (label j = 0; j < Lfield.size(); j++)
         {
             if (k == 0)
             {
                 u_bc = gSum(Lfield[j].mesh().magSf().boundaryField()[p] *
-                            Lfield[j].boundaryField()[p]).component(l) / area;
+                            Lfield[j].boundaryField()[p]).component(l)/ area;
                 volVectorField C("U", Lfield[j] - liftfield[k]*u_bc / u_lf);
-                omfield.append(C.clone());
+		cout << "k = " << k << "\n";
+		//cout << "Lfield j: " << Lfield[j] << "\n";
+		//cout << "lift field k: " << liftfield[k] << "\n";
+		cout << "u_bc: " << u_bc << "\n";
+		cout << "u_lf: " << u_lf << "\n";
+
+		//stampa tutte le variabili sopra e vedi quanto valgono, perche non viene zero
+                //volVectorField C("U", Lfield[0]);
+		//C = Lfield[j] - liftfield[k]*u_bc / u_lf;
+		omfield.append(C.clone());
             }
             else
             {
                 u_bc = gSum(omfield[j].mesh().magSf().boundaryField()[p] *
-                            omfield[j].boundaryField()[p]).component(l) / area;
-                volVectorField C("U", omfield[j] - liftfield[k]*u_bc / u_lf);
-                omfield.set(j, C.clone());
+                            omfield[j].boundaryField()[p]).component(l)/ area;
+		cout << "k = " << k << "\n";
+                //cout << "omfield j: " << omfield[j] << "\n";
+		//cout << "lift field k: " << liftfield[k] << "\n";
+                cout << "u_bc: " << u_bc << "\n";
+                cout << "u_lf: " << u_lf << "\n";
+
+		volVectorField C("U", omfield[j] - liftfield[k]*u_bc/ u_lf);
+                //volVectorField C("U", omfield[0]);
+                //C = omfield[j] - liftfield[k]*u_bc / u_lf;
+		omfield.set(j, C.clone());
             }
         }
     }
@@ -83,9 +104,9 @@ void reductionProblem::computeLiftT(T& Lfield, T& liftfield, T& omfield)
     scalar t_lf;
     scalar area;
 
-    for (label k = 0; k < inletIndexT.rows(); k++)
+    for (label k = 0; k < outletIndex.rows(); k++)
     {
-        label p = inletIndexT(k, 0);
+        label p = outletIndex(k, 0);
         area = gSum(Lfield[0].mesh().magSf().boundaryField()[p]);
         t_lf = gSum(liftfield[k].mesh().magSf().boundaryField()[p] *
                     liftfield[k].boundaryField()[p]) / area;
@@ -97,7 +118,9 @@ void reductionProblem::computeLiftT(T& Lfield, T& liftfield, T& omfield)
                 t_bc = gSum(Lfield[j].mesh().magSf().boundaryField()[p] *
                             Lfield[j].boundaryField()[p]) / area;
                 volScalarField C(Lfield[0].name(), Lfield[j] - liftfield[k]*t_bc / t_lf);
-                omfield.append(C.clone());
+                //volScalarField C("P",Lfield[0]);
+		//C = Lfield[j] - liftfield[k]*t_bc / t_lf;
+		omfield.append(C.clone());
             }
             else
             {

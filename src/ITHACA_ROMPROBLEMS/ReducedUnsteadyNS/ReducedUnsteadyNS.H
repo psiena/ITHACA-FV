@@ -41,6 +41,7 @@ SourceFiles
 #include "IOmanip.H"
 #include "ReducedSteadyNS.H"
 #include "unsteadyNS.H"
+#include "reductionProblem.H"
 #include <Eigen/Dense>
 #include <unsupported/Eigen/NonLinearOptimization>
 #include <unsupported/Eigen/NumericalDiff>
@@ -54,8 +55,9 @@ struct newton_unsteadyNS_sup: public newton_argument<double>
                               unsteadyNS& problem): newton_argument<double>(Nx, Ny),
             problem(&problem),
             Nphi_u(problem.NUmodes + problem.liftfield.size() + problem.NSUPmodes),
-            Nphi_p(problem.NPmodes),
-            N_BC(problem.inletIndex.rows())
+            Nphi_p(problem.NPmodes + problem.liftfieldP.size()),
+            N_BC(problem.inletIndex.rows()),
+	    N_BC_P(problem.outletIndex.rows())
         {}
 
         int operator()(const Eigen::VectorXd& x, Eigen::VectorXd& fvec) const;
@@ -65,11 +67,16 @@ struct newton_unsteadyNS_sup: public newton_argument<double>
         int Nphi_u;
         int Nphi_p;
         int N_BC;
+	int N_BC_P;
+	word Add_liftfieldP;
+	word kernel_stabilization;
         scalar nu;
+	scalar nu_a;
         scalar dt;
         Eigen::VectorXd y_old;
         Eigen::VectorXd yOldOld;
         Eigen::VectorXd BC;
+	Eigen::VectorXd BC_P;
         Eigen::MatrixXd tauU;
 };
 
@@ -83,8 +90,9 @@ struct newton_unsteadyNS_PPE: public newton_argument<double>
                               unsteadyNS& problem): newton_argument<double>(Nx, Ny),
             problem(&problem),
             Nphi_u(problem.NUmodes + problem.liftfield.size()),
-            Nphi_p(problem.NPmodes),
-            N_BC(problem.inletIndex.rows())
+            Nphi_p(problem.NPmodes + problem.liftfieldP.size()),
+            N_BC(problem.inletIndex.rows()),
+	    N_BC_P(problem.outletIndex.rows())
         {}
 
         int operator()(const Eigen::VectorXd& x, Eigen::VectorXd& fvec) const;
@@ -94,11 +102,16 @@ struct newton_unsteadyNS_PPE: public newton_argument<double>
         int Nphi_u;
         int Nphi_p;
         int N_BC;
+	int N_BC_P;
+	word Add_liftfieldP;
+	word kernel_stabilization;
         scalar nu;
+	scalar nu_a;
         scalar dt;
         Eigen::VectorXd y_old;
         Eigen::VectorXd yOldOld;
         Eigen::VectorXd BC;
+	Eigen::VectorXd BC_P;
         Eigen::MatrixXd tauU;
 };
 
@@ -158,6 +171,15 @@ class reducedUnsteadyNS: public reducedSteadyNS
 
         /// Penalty Factor determined with iterative solver
         Eigen::MatrixXd tauIter;
+	
+	//INSERITI DA ME
+	//Eigen::MatrixXd P_now;
+	//Eigen::VectorXd pressure;
+	int N_BC_P;
+	IOdictionary* ITHACAdict;
+	word Add_liftfieldP;
+	word kernel_stabilization;
+	scalar nu_a;
 
         /// Maximum number of iterations to be done for the computation of the penalty factor
         scalar maxIterPenalty;
@@ -206,7 +228,7 @@ class reducedUnsteadyNS: public reducedSteadyNS
         /// @param[in]  startSnap The first snapshot taken from the offline snapshots
         /// and used to get the reduced initial condition.
         ///
-        void solveOnline_PPE(Eigen::MatrixXd vel_now, int startSnap = 0);
+        void solveOnline_PPE(Eigen::MatrixXd vel_now, Eigen::MatrixXd P_now,int startSnap = 0);
 
         /// Method to perform an online solve using a supremizer stabilisation method
         ///
@@ -216,7 +238,8 @@ class reducedUnsteadyNS: public reducedSteadyNS
         /// @param[in]  startSnap The first snapshot taken from the offline snapshots
         /// and used to get the reduced initial condition.
         ///
-        void solveOnline_sup(Eigen::MatrixXd vel_now, int startSnap = 0);
+        void solveOnline_sup(Eigen::MatrixXd vel_now, Eigen::MatrixXd P_now, int startSnap = 0);
+	//void solveOnline_sup(Eigen::MatrixXd vel_now, int startSnap = 0);
 
         /// Method to reconstruct the solutions from an online solve with a
         /// supremizer stabilisation technique. stabilisation method
@@ -235,7 +258,8 @@ class reducedUnsteadyNS: public reducedSteadyNS
         /// @return     The rescaled velocity vector
         ///
         Eigen::MatrixXd setOnlineVelocity(Eigen::MatrixXd vel);
-
+        Eigen::MatrixXd setOnlinePressure(Eigen::MatrixXd pressure);
+	PtrList<volVectorField> U_projected;
 };
 
 

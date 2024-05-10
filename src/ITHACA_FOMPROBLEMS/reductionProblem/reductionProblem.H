@@ -135,6 +135,7 @@ class reductionProblem
         /// \\end{bmatrix}
         /// \\]
         Eigen::MatrixXi inletIndex;
+	Eigen::MatrixXi outletIndex;
 
         /// Matrix that contains informations about the inlet boundaries
         /// without specifing the direction
@@ -156,7 +157,7 @@ class reductionProblem
         /// \\end{bmatrix}
         /// \\]
         Eigen::MatrixXi inletPatch;
-
+	Eigen::MatrixXi outletPatch;
 #pragma GCC diagnostic pop
 
         // Functions

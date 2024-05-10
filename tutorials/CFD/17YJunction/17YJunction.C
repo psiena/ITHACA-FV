@@ -315,7 +315,7 @@ int main(int argc, char* argv[])
     }
 
     // Set the online temperature BC and solve reduced model
-    reduced.solveOnline_PPE(vel_now);
+    reduced.solveOnline_PPE(vel_now,vel_now);
     reduced.reconstruct(false, "./ITHACAoutput/Reconstruction/");
     exit(0);
 }

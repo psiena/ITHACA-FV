@@ -55,6 +55,8 @@ SourceFiles
 #include "IPstream.H"
 #include "OPstream.H"
 #include "Modes.H"
+#include <list>
+//#include "unsteadyNS.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -84,6 +86,9 @@ class steadyNS: public reductionProblem
         // Member Functions
         /// List of pointers used to form the pressure snapshots matrix
         PtrList<volScalarField> Pfield;
+	//PtrList<volScalarField> Pfield_out;
+	std::list<float> Pfield_out;
+	//Eigen::MatrixXd Pfield_out(1, 501);
 
         /// List of pointers used to form the velocity snapshots matrix
         PtrList<volVectorField> Ufield;
@@ -108,12 +113,17 @@ class steadyNS: public reductionProblem
 
         /// List of pointers used to form the list of lifting functions
         PtrList<volVectorField> liftfield;
+	PtrList<volScalarField> liftfieldP;
+	//Eigen::MatrixXi outletPatch;
 
         /// List of pointers used to form the homogeneous velocity snapshots
         PtrList<volVectorField> Uomfield;
+	PtrList<volScalarField> Pomfield;
 
         /// List of pointers containing the total number of lift, supremizer and velocity modes
         volVectorModes L_U_SUPmodes;
+	volScalarModes Pmodes_prova;
+	PtrList<volScalarField> Pmodes_prova1;
 
         /// List of pointers containing the total number of flux modes
         surfaceScalarModes L_PHImodes;
@@ -338,6 +348,8 @@ class steadyNS: public reductionProblem
 
         /// Perform a lift solve
         void liftSolve();
+	//void liftSolveP();
+	Eigen::MatrixXd BCs_P;
 
         // Wrapped Proj. Methods;
 
@@ -384,18 +396,6 @@ class steadyNS: public reductionProblem
         /// @return     reduced matrix in Eigen::MatrixXd format for the diffusion term.
         ///
         Eigen::MatrixXd diffusive_term(label NUmodes, label NPmodes, label NSUPmodes);
-
-        //--------------------------------------------------------------------------
-        //  Projection Methods Momentum Equation
-        /// Symetric diffusive Term
-        ///
-        /// @param[in]  NUmodes    The number of velocity modes.
-        /// @param[in]  NPmodes    The number of pressure modes.
-        /// @param[in]  NSUPmodes  The number of supremizer modes.
-        ///
-        /// @return     reduced matrix in Eigen::MatrixXd format for the diffusion term.
-        ///
-        Eigen::MatrixXd diffusive_term_sym(label NUmodes, label NPmodes, label NSUPmodes);
 
         //--------------------------------------------------------------------------
         /// Gradient of pressure
