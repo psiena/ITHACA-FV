@@ -1,0 +1,87 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v3.0+                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -2 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    wall
+    {
+        type    zeroGradient;
+    }
+    descending_aorta
+    {
+        type    fixedValue;
+        value   uniform 0;
+    }
+    
+    second_arteria
+    {
+        /*type    fixedValue;
+        value   uniform 0;*/
+        type    fixedValue;
+        value   uniform 0;
+    }
+
+    inlet_aorta
+    {
+        type    zeroGradient;
+    }
+ 
+
+    first_first_arteria
+    {
+        type    fixedValue;
+        value   uniform 0;
+    }
+
+    third_arteria
+    {
+        type    fixedValue;
+        value   uniform 0;
+    }
+
+    first_second_arteria
+    {
+        type    fixedValue;
+        value   uniform 0;
+    }
+
+
+
+/*    outlet 
+    {
+        type    codedFixedValue;
+        redirectType    BC_OpenCOR;
+        value   uniform 0;
+
+        code
+          #{ 
+             const fvMesh& mesh = patch().boundaryMesh().mesh();
+             label patchOutlet = mesh.boundaryMesh().findPatchID("outlet"); 
+             const volScalarField& p = this->db().lookupObject<volScalarField> ("p");
+             const fvPatchScalarField& pb = p.boundaryField()[patchOutlet];
+             scalarField& field = *this;
+             field = pb;
+          #};
+
+    }
+*/
+}
+
+// ************************************************************************* //

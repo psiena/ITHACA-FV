@@ -1,0 +1,89 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v3.0+                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    wall
+    {
+      type      fixedValue;
+      value     uniform (0 0 0);
+    }
+ 
+    descending_aorta
+    {
+      type      pressureInletOutletVelocity;
+      phi       phi;
+      value     uniform (0 0 0);
+      //type     zeroGradient;
+      /*type      fixedValue;
+      value     uniform (0 0 0);*/
+    }
+
+    
+    second_arteria
+    {
+      type      pressureInletOutletVelocity;
+      phi       phi;
+      value     uniform (0 0 0);
+      //type     zeroGradient;
+    }
+
+    inlet_aorta
+    {
+     type            fixedValue;
+     value           uniform (-1 1 1);//1.877218546e-16); 
+     /*type                 flowRateInletVelocity;
+      volumetricFlowRate   swak {
+                                   expression "9.3833e-5 + 6.38712e-5*cos(2*3.14*1*t/0.586) - 5.66642e-5*cos(2*3.14*2*t/0.586) - 2.15285e-5*cos(2*3.14*3*t/0.586) - 0.3415e-5*cos(2*3.14*4*t/0.586) + 14.17714e-5*sin(2*3.14*1*t/0.586) + 7.28171e-5*sin(2*3.14*2*t/0.586) - 0.97268e-5*sin(2*3.14*3*t/0.586) + 0.99781e-5*sin(2*3.14*4*t/0.586)"; 
+                                  valueType  patch;
+                                  patchName  inlet_aorta;
+                                  independentVariableName t; 
+                                };
+      value                uniform (0 0 0);*/
+    }
+
+    first_first_arteria
+    {
+      type      pressureInletOutletVelocity;
+      phi       phi;
+      value     uniform (0 0 0);
+      //type     zeroGradient;
+    }
+
+    third_arteria
+    {
+      type      pressureInletOutletVelocity;
+      phi       phi;
+      value     uniform (0 0 0);
+      //type     zeroGradient;
+    }
+
+    first_second_arteria
+    {
+      type      pressureInletOutletVelocity;
+      phi       phi;
+      value     uniform (0 0 0);
+      //type     zeroGradient;
+    }
+
+
+}
+
+//************************************************************************* //
